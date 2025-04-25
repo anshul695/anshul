@@ -14,8 +14,8 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="%", intents=intents)
 
-TICKET_CHANNEL_ID = 123456789012345678  # Replace with your button embed channel
-TICKET_CATEGORY_ID = 123456789012345678  # Replace with your ticket category ID
+TICKET_CHANNEL_ID = 1365339429539024946  # Replace with your button embed channel
+TICKET_CATEGORY_ID = 1363040295943536700  # Replace with your ticket category ID
 STAFF_ROLE_NAME = "Staff"  # Replace with your staff role name
 
 
