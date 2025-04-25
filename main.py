@@ -73,7 +73,6 @@ class TicketModal(Modal):
     color=discord.Color.blue()
 )
 
-        )
         embed.set_footer(text=f"Ticket opened by {interaction.user}")
         await ticket_channel.send(embed=embed)
 
