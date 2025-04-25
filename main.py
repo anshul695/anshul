@@ -21,29 +21,20 @@ TICKET_CHANNEL_ID = 1365339429539024946  # Replace with your actual channel ID
 STAFF_ROLE_NAME = 'Staff'  # Replace with your actual staff role name
 TICKET_CATEGORY_ID = 1363040295943536700  # Replace with the category ID you want tickets to be created in
 
-# Create ticket button embed
-@bot.command()
-async def setup_ticket(ctx):
-    channel = bot.get_channel(TICKET_CHANNEL_ID)
-    button = Button(label="Open Ticket", style=discord.ButtonStyle.green)
+# Persistent view to keep the button alive
+class TicketButtonView(View):
+    def __init__(self):
+        super().__init__(timeout=None)  # No timeout, stays alive after restart
+        self.add_item(OpenTicketButton())
 
-    async def button_callback(interaction):
+class OpenTicketButton(Button):
+    def __init__(self):
+        super().__init__(label="Open Ticket", style=discord.ButtonStyle.green)
+
+    async def callback(self, interaction: discord.Interaction):
         # Show the ticket modal form when clicked
         modal = TicketModal()
         await interaction.response.send_modal(modal)
-
-    button.callback = button_callback
-
-    view = View()
-    view.add_item(button)
-
-    embed = discord.Embed(
-        title="Create a Ticket",
-        description="Click the button below to open a ticket and get assistance.",
-        color=discord.Color.green()
-    )
-
-    await channel.send(embed=embed, view=view)
 
 # Modal to collect ticket information
 class TicketModal(Modal):
@@ -104,10 +95,22 @@ class TicketModal(Modal):
         view.add_item(close_button)
         await ticket_channel.send("Ticket is now being processed.", view=view)
 
+# Event to register the view when bot is ready
+@bot.event
+async def on_ready():
+    bot.add_view(TicketButtonView())  # Register the view when bot is ready
+    print(f"Logged in as {bot.user}")
+
 # Command to setup the ticket system
 @bot.command()
-async def setup(ctx):
-    await setup_ticket(ctx)
+async def setup_ticket(ctx):
+    channel = bot.get_channel(TICKET_CHANNEL_ID)
+    embed = discord.Embed(
+        title="Create a Ticket",
+        description="Click the button below to open a ticket and get assistance.",
+        color=discord.Color.green()
+    )
+    await channel.send(embed=embed, view=TicketButtonView())
 
 # Running the bot using token from .env
 bot.run(os.getenv("TOKEN"))
