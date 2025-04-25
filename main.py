@@ -14,7 +14,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
 intents.guilds = True
-bot = commands.Bot(command_prefix="%")
+bot = commands.Bot(command_prefix="%", intents=intents)
 
 # Channel ID for the Open Ticket button
 TICKET_CHANNEL_ID = 1365339429539024946  # Replace with your actual channel ID
