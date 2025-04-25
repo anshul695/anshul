@@ -24,17 +24,18 @@ TICKET_CATEGORY_ID = 1363040295943536700  # Replace with the category ID you wan
 # Persistent view to keep the button alive
 class TicketButtonView(View):
     def __init__(self):
-        super().__init__(timeout=None)  # No timeout, stays alive after restart
+        super().__init__(timeout=None)
         self.add_item(OpenTicketButton())
+
 
 class OpenTicketButton(Button):
     def __init__(self):
         super().__init__(label="Open Ticket", style=discord.ButtonStyle.green, custom_id="open_ticket_button")
 
-    async def callback(self, interaction: discord.Interaction):
-        # Show the ticket modal form when clicked
+    async def callback(self, interaction):
         modal = TicketModal()
         await interaction.response.send_modal(modal)
+
 
 # Modal to collect ticket information
 class TicketModal(Modal):
@@ -43,18 +44,17 @@ class TicketModal(Modal):
 
         self.team_name = TextInput(label="Team Name", required=True)
         self.issue = TextInput(label="Issue", required=True)
-        self.proof = TextInput(label="Proof or Screenshot", required=False)
 
         self.add_item(self.team_name)
         self.add_item(self.issue)
-        self.add_item(self.proof)
+
 
 
     async def callback(self, interaction: discord.Interaction):
         # Create private ticket channel
         team_name = self.team_name.value
         issue = self.issue.value
-        proof = self.proof.value
+        
 
         category = discord.utils.get(interaction.guild.categories, id=TICKET_CATEGORY_ID)
         ticket_channel = await interaction.guild.create_text_channel(
@@ -68,9 +68,11 @@ class TicketModal(Modal):
 
         # Send embed with ticket info
         embed = discord.Embed(
-            title=f"Ticket for {team_name}",
-            description=f"**Issue**: {issue}\n**Proof**: {proof if proof else 'No proof provided'}",
-            color=discord.Color.blue()
+    title=f"Ticket for {team_name}",
+    description=f"**Issue**: {issue}",
+    color=discord.Color.blue()
+)
+
         )
         embed.set_footer(text=f"Ticket opened by {interaction.user}")
         await ticket_channel.send(embed=embed)
