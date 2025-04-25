@@ -17,9 +17,9 @@ intents.guilds = True
 bot = commands.Bot(command_prefix="%")
 
 # Channel ID for the Open Ticket button
-TICKET_CHANNEL_ID = 000011111  # Replace with your actual channel ID
-STAFF_ROLE_NAME = 'Ticket Staff'  # Replace with your actual staff role name
-TICKET_CATEGORY_ID = 1234567890  # Replace with the category ID you want tickets to be created in
+TICKET_CHANNEL_ID = 1365339429539024946  # Replace with your actual channel ID
+STAFF_ROLE_NAME = 'Staff'  # Replace with your actual staff role name
+TICKET_CATEGORY_ID = 1363040295943536700  # Replace with the category ID you want tickets to be created in
 
 # Create ticket button embed
 @bot.command()
