@@ -29,7 +29,7 @@ class TicketButtonView(View):
 
 class OpenTicketButton(Button):
     def __init__(self):
-        super().__init__(label="Open Ticket", style=discord.ButtonStyle.green)
+        super().__init__(label="Open Ticket", style=discord.ButtonStyle.green, custom_id="open_ticket_button")
 
     async def callback(self, interaction: discord.Interaction):
         # Show the ticket modal form when clicked
@@ -41,13 +41,14 @@ class TicketModal(Modal):
     def __init__(self):
         super().__init__(title="Open Ticket")
 
-        self.team_name = TextInput(label="What is your team name?", required=True)
-        self.issue = TextInput(label="What is the issue?", required=True)
-        self.proof = TextInput(label="Provide proof (if any, or say 'Sent screenshot')", required=False)
+        self.team_name = TextInput(label="Team Name", required=True)
+        self.issue = TextInput(label="Issue", required=True)
+        self.proof = TextInput(label="Proof or Screenshot", required=False)
 
         self.add_item(self.team_name)
         self.add_item(self.issue)
         self.add_item(self.proof)
+
 
     async def callback(self, interaction: discord.Interaction):
         # Create private ticket channel
