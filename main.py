@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from discord.ui import Button, View, Modal, TextInput
-import random
 import os
 from dotenv import load_dotenv
 
@@ -19,11 +18,31 @@ TICKET_CATEGORY_ID = 1363040295943536700  # Replace with your ticket category ID
 STAFF_ROLE_NAME = "Staff"  # Replace with your staff role name
 
 
-class TicketModal(Modal, title="Open Ticket"):
-    team_name = TextInput(label="Team Name", required=True, placeholder="Enter your team name", max_length=45)
-    issue = TextInput(label="Issue", required=True, placeholder="Describe the issue", style=discord.TextStyle.paragraph, max_length=400)
+# Sequential ticket number generator
+def get_next_ticket_number():
+    try:
+        with open("ticket_counter.txt", "r") as f:
+            count = int(f.read().strip())
+    except FileNotFoundError:
+        count = 0
 
-    async def on_submit(self, interaction: discord.Interaction):
+    count += 1
+
+    with open("ticket_counter.txt", "w") as f:
+        f.write(str(count))
+
+    return f"{count:04d}"  # Format as 0001, 0002, etc.
+
+
+class TicketModal(Modal):
+    def __init__(self):
+        super().__init__(title="Open Ticket")
+        self.team_name = TextInput(label="Team Name", required=True)
+        self.issue = TextInput(label="Issue", required=True)
+        self.add_item(self.team_name)
+        self.add_item(self.issue)
+
+    async def callback(self, interaction: discord.Interaction):
         team_name = self.team_name.value
         issue = self.issue.value
 
@@ -32,8 +51,11 @@ class TicketModal(Modal, title="Open Ticket"):
             await interaction.response.send_message("Ticket category not found.", ephemeral=True)
             return
 
+        ticket_number = get_next_ticket_number()
+        channel_name = f"{team_name.lower().replace(' ', '-')}-{ticket_number}"
+
         ticket_channel = await interaction.guild.create_text_channel(
-            name=f"{team_name}-{random.randint(1000, 9999)}",
+            name=channel_name,
             category=category
         )
 
@@ -44,7 +66,7 @@ class TicketModal(Modal, title="Open Ticket"):
         await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
 
         embed = discord.Embed(
-            title=f"Ticket for {team_name}",
+            title=f"Ticket #{ticket_number} for {team_name}",
             description=f"**Issue**: {issue}",
             color=discord.Color.blue()
         )
@@ -53,6 +75,7 @@ class TicketModal(Modal, title="Open Ticket"):
         await ticket_channel.send(embed=embed)
 
         await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
+
 
 class OpenTicketButton(Button):
     def __init__(self):
