@@ -16,7 +16,8 @@ bot = commands.Bot(command_prefix="%", intents=intents)
 TICKET_CHANNEL_ID = 1365339429539024946  # Channel to post the "Open Ticket" button
 TICKET_CATEGORY_ID = 1363040295943536700  # Category where tickets will be created
 STAFF_ROLE_NAME = "Staff"  # Name of your staff role
-LOGS_CHANNEL_ID = 1361975087124971693  # Channel where ticket creations are logged
+LOGS_CHANNEL_ID = 1361974563952529583  # Ticket activity (opened/closed)
+TRANSCRIPTS_CHANNEL_ID = 1361975087124971693  # Ticket transcripts (saved chat)
 
 # --- Ticket Modal ---
 class TicketModal(Modal, title="🎟️ Open a Ticket"):
@@ -78,15 +79,51 @@ class TicketManageButtons(View):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.secondary, custom_id="close_ticket")
-    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=False)
-        await interaction.channel.set_permissions(interaction.guild.me, send_messages=True)
-        await interaction.response.send_message("🔒 Ticket closed. Only staff can respond now.", ephemeral=True)
+async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+    await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=False)
+    await interaction.response.send_message("🔒 Ticket closed. Only staff can now respond.", ephemeral=True)
+
+    # Log ticket closure
+    logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
+    if logs_channel:
+        await logs_channel.send(f"🔒 {interaction.user.mention} closed the ticket `{interaction.channel.name}`.")
+
 
     @discord.ui.button(label="🗑️ Delete Ticket", style=discord.ButtonStyle.danger, custom_id="delete_ticket")
-    async def delete_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🗑️ Deleting this ticket...", ephemeral=True)
-        await interaction.channel.delete()
+async def delete_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+    await interaction.response.send_message("🗑️ Deleting ticket and saving transcript...", ephemeral=True)
+
+    # Save messages from the ticket channel
+    messages = []
+    async for msg in interaction.channel.history(limit=None, oldest_first=True):
+        messages.append(f"[{msg.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {msg.author}: {msg.content}")
+
+    transcript_text = "\n".join(messages) if messages else "No messages."
+
+    # Save to a temporary file
+    filename = f"transcript-{interaction.channel.name}.txt"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(transcript_text)
+
+    # Send the transcript to the Transcripts Channel
+    transcripts_channel = bot.get_channel(TRANSCRIPTS_CHANNEL_ID)
+    if transcripts_channel:
+        await transcripts_channel.send(
+            content=f"📝 Transcript for {interaction.channel.name}:",
+            file=discord.File(filename)
+        )
+
+    # Log ticket deletion to Logs Channel
+    logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
+    if logs_channel:
+        await logs_channel.send(f"🗑️ {interaction.user.mention} deleted the ticket `{interaction.channel.name}`.")
+
+    # Delete the temp file after sending
+    os.remove(filename)
+
+    # Finally, delete the ticket channel
+    await interaction.channel.delete()
+
 
 # --- Open Ticket Button ---
 class OpenTicketButton(Button):
