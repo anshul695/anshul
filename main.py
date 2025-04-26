@@ -13,10 +13,10 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="%", intents=intents)
 
-TICKET_CHANNEL_ID = 1365339429539024946  # Channel where "Open Ticket" button will be sent
-TICKET_CATEGORY_ID = 1363040295943536700  # Category where tickets will be created
-STAFF_ROLE_NAME = "Staff"  # Staff role name
-LOGS_CHANNEL_ID = 1361975087124971693  # Logs channel ID
+TICKET_CHANNEL_ID = 1365339429539024946
+TICKET_CATEGORY_ID = 1363040295943536700
+STAFF_ROLE_NAME = "Staff"
+LOGS_CHANNEL_ID = 1361975087124971693
 
 class TicketModal(Modal):
     def __init__(self):
@@ -49,14 +49,12 @@ class TicketModal(Modal):
             category=category
         )
 
-        # Permissions
         await ticket_channel.set_permissions(interaction.guild.default_role, read_messages=False)
         staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE_NAME)
         if staff_role:
             await ticket_channel.set_permissions(staff_role, read_messages=True, send_messages=True)
         await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
 
-        # Send ticket embed
         embed = discord.Embed(
             title=f"🎟️ Ticket for {raw_team_name}",
             description=f"**Issue:** {issue}",
@@ -67,7 +65,6 @@ class TicketModal(Modal):
 
         await ticket_channel.send(embed=embed, view=TicketManageButtons())
 
-        # Logs
         logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
         if logs_channel:
             await logs_channel.send(f"🆕 Ticket created by {interaction.user.mention} ➔ {ticket_channel.mention}")
@@ -82,7 +79,7 @@ class TicketManageButtons(View):
 
 class CloseTicketButton(Button):
     def __init__(self):
-        super().__init__(label="🔒 Close Ticket", style=discord.ButtonStyle.red)
+        super().__init__(label="🔒 Close Ticket", style=discord.ButtonStyle.red, custom_id="close_ticket")
 
     async def callback(self, interaction: discord.Interaction):
         if isinstance(interaction.channel, discord.TextChannel):
@@ -91,7 +88,7 @@ class CloseTicketButton(Button):
 
 class DeleteTicketButton(Button):
     def __init__(self):
-        super().__init__(label="🗑️ Delete Ticket", style=discord.ButtonStyle.grey)
+        super().__init__(label="🗑️ Delete Ticket", style=discord.ButtonStyle.grey, custom_id="delete_ticket")
 
     async def callback(self, interaction: discord.Interaction):
         logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
@@ -101,7 +98,7 @@ class DeleteTicketButton(Button):
 
 class OpenTicketButton(Button):
     def __init__(self):
-        super().__init__(label="🎟️ Open Ticket", style=discord.ButtonStyle.green)
+        super().__init__(label="🎟️ Open Ticket", style=discord.ButtonStyle.green, custom_id="open_ticket")
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(TicketModal())
@@ -114,7 +111,7 @@ class TicketButtonView(View):
 @bot.event
 async def on_ready():
     print(f"✅ Bot is ready. Logged in as {bot.user}")
-    bot.add_view(TicketButtonView())
+    bot.add_view(TicketButtonView())  # ✅ Now this works perfectly
 
 @bot.command()
 async def setup_ticket(ctx):
