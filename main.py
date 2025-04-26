@@ -28,48 +28,52 @@ class TicketModal(Modal):
 
     async def callback(self, interaction: discord.Interaction):
         raw_team_name = self.team_name.value.strip()
-        team_name = raw_team_name.replace(" ", "-").lower()
         issue = self.issue.value
 
         category = discord.utils.get(interaction.guild.categories, id=TICKET_CATEGORY_ID)
         if not category:
-            await interaction.response.send_message("❌ Ticket category not found.", ephemeral=True)
+            await interaction.response.send_message("❌ Ticket category not found. Please contact staff.", ephemeral=True)
             return
 
+        # Create clean channel name
+        team_name = raw_team_name.replace(" ", "-").lower()
+
+        existing_channels = [channel.name for channel in category.text_channels]
         final_name = team_name
         count = 1
-        existing_channel_names = [channel.name for channel in category.channels]
 
-        while final_name in existing_channel_names:
+        while final_name in existing_channels:
             count += 1
             final_name = f"{team_name}-{count}"
 
-        ticket_channel = await interaction.guild.create_text_channel(
-            name=final_name,
-            category=category
-        )
+        # Create the ticket channel under the category
+        ticket_channel = await category.create_text_channel(name=final_name)
 
-        await ticket_channel.set_permissions(interaction.guild.default_role, read_messages=False)
+        # Set permissions
+        await ticket_channel.set_permissions(interaction.guild.default_role, view_channel=False)
         staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE_NAME)
         if staff_role:
-            await ticket_channel.set_permissions(staff_role, read_messages=True, send_messages=True)
-        await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
+            await ticket_channel.set_permissions(staff_role, view_channel=True, send_messages=True)
+        await ticket_channel.set_permissions(interaction.user, view_channel=True, send_messages=True)
 
+        # Create embed
         embed = discord.Embed(
             title=f"🎟️ Ticket for {raw_team_name}",
             description=f"**Issue:** {issue}",
             color=discord.Color.blurple()
         )
-        embed.add_field(name="📸 Proof Needed", value=f"{interaction.user.mention} please upload any required proof here.", inline=False)
+        embed.add_field(name="📸 Proof Needed", value=f"{interaction.user.mention} please upload any required proof/screenshots here.", inline=False)
         embed.set_footer(text=f"Opened by {interaction.user}", icon_url=interaction.user.display_avatar.url)
 
         await ticket_channel.send(embed=embed, view=TicketManageButtons())
 
+        # Send log to logs channel
         logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
         if logs_channel:
-            await logs_channel.send(f"🆕 Ticket created by {interaction.user.mention} ➔ {ticket_channel.mention}")
+            await logs_channel.send(f"🆕 Ticket created by {interaction.user.mention}: {ticket_channel.mention}")
 
-        await interaction.response.send_message(f"✅ Your ticket has been created: {ticket_channel.mention}", ephemeral=True)
+        # Confirm to user
+        await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
 
 class TicketManageButtons(View):
     def __init__(self):
