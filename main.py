@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from discord.ui import Button, View, Modal, TextInput
-import random
 import os
 from dotenv import load_dotenv
 
@@ -14,10 +13,10 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="%", intents=intents)
 
-TICKET_CHANNEL_ID = 1365339429539024946  # Your "ticket button" channel
-TICKET_CATEGORY_ID = 1363040295943536700  # Your ticket category
-STAFF_ROLE_NAME = "Staff"  # Your staff role
-LOGS_CHANNEL_ID = 1361975087124971693  # Your ticket logs/transcripts channel
+TICKET_CHANNEL_ID = 1365339429539024946  # Channel to post the "Open Ticket" button
+TICKET_CATEGORY_ID = 1363040295943536700  # Category where tickets will be created
+STAFF_ROLE_NAME = "Staff"  # Name of your staff role
+LOGS_CHANNEL_ID = 1361975087124971693  # Channel where ticket creations are logged
 
 # --- Ticket Modal ---
 class TicketModal(Modal, title="🎟️ Open a Ticket"):
@@ -26,42 +25,42 @@ class TicketModal(Modal, title="🎟️ Open a Ticket"):
 
     async def on_submit(self, interaction: discord.Interaction):
         raw_team_name = self.team_name.value.strip()
-        team_name = raw_team_name.replace(" ", "-").lower()
-        issue = self.issue.value
+        team_name_base = raw_team_name.replace(" ", "-").lower()
+        issue_text = self.issue.value.strip()
 
         category = discord.utils.get(interaction.guild.categories, id=TICKET_CATEGORY_ID)
         if not category:
             await interaction.response.send_message("❌ Ticket category not found.", ephemeral=True)
             return
 
-        # Check for duplicate names
-        final_name = team_name
-        count = 1
+        # Create a unique channel name always
         existing_names = [c.name for c in category.channels]
+        final_name = team_name_base
+        counter = 1
         while final_name in existing_names:
-            count += 1
-            final_name = f"{team_name}-{count}"
+            counter += 1
+            final_name = f"{team_name_base}-{counter}"
 
         ticket_channel = await interaction.guild.create_text_channel(
             name=final_name,
             category=category
         )
 
-        # Permissions
-        await ticket_channel.set_permissions(interaction.guild.default_role, read_messages=False)
+        # Set permissions
+        await ticket_channel.set_permissions(interaction.guild.default_role, view_channel=False)
         staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE_NAME)
         if staff_role:
-            await ticket_channel.set_permissions(staff_role, read_messages=True, send_messages=True)
-        await ticket_channel.set_permissions(interaction.user, read_messages=True, send_messages=True)
+            await ticket_channel.set_permissions(staff_role, view_channel=True, send_messages=True, read_message_history=True)
+        await ticket_channel.set_permissions(interaction.user, view_channel=True, send_messages=True, read_message_history=True)
 
-        # Send Ticket Embed
+        # Send ticket info
         embed = discord.Embed(
             title=f"🎟️ Ticket for {raw_team_name}",
-            description=f"**Issue:** {issue}",
+            description=f"**Issue:** {issue_text}",
             color=discord.Color.blurple()
         )
         embed.add_field(name="📸 Proof Needed", value=f"{interaction.user.mention} Please upload any required proof below!", inline=False)
-        embed.set_footer(text=f"Opened by {interaction.user}", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"Opened by {interaction.user}", icon_url=interaction.user.display_avatar.url if interaction.user.display_avatar else None)
 
         await ticket_channel.send(content=f"{interaction.user.mention}", embed=embed, view=TicketManageButtons())
 
@@ -70,10 +69,10 @@ class TicketModal(Modal, title="🎟️ Open a Ticket"):
         if logs_channel:
             await logs_channel.send(f"🆕 Ticket created by {interaction.user.mention} ➔ {ticket_channel.mention}")
 
+        # Confirm to user
         await interaction.response.send_message(f"✅ Your ticket has been created: {ticket_channel.mention}", ephemeral=True)
 
-
-# --- Ticket Management Buttons (Close/Delete) ---
+# --- Ticket Manage Buttons ---
 class TicketManageButtons(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -81,15 +80,15 @@ class TicketManageButtons(View):
     @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.secondary, custom_id="close_ticket")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=False)
-        await interaction.response.send_message("🔒 Ticket closed. Only staff can now respond.", ephemeral=True)
+        await interaction.channel.set_permissions(interaction.guild.me, send_messages=True)
+        await interaction.response.send_message("🔒 Ticket closed. Only staff can respond now.", ephemeral=True)
 
     @discord.ui.button(label="🗑️ Delete Ticket", style=discord.ButtonStyle.danger, custom_id="delete_ticket")
     async def delete_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("🗑️ Deleting this ticket...", ephemeral=True)
         await interaction.channel.delete()
 
-
-# --- Open Ticket Button (Button that opens Modal) ---
+# --- Open Ticket Button ---
 class OpenTicketButton(Button):
     def __init__(self):
         super().__init__(label="🎟️ Open Ticket", style=discord.ButtonStyle.success, custom_id="open_ticket")
@@ -97,23 +96,21 @@ class OpenTicketButton(Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(TicketModal())
 
-
-# --- View for the Open Ticket Button ---
+# --- Ticket Button View ---
 class TicketButtonView(View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(OpenTicketButton())
 
-
 # --- Bot Events ---
 @bot.event
 async def on_ready():
     print(f"✅ Bot is ready. Logged in as {bot.user}")
-    bot.add_view(TicketButtonView())  # VERY IMPORTANT!!
-
+    bot.add_view(TicketButtonView())
 
 # --- Setup Command ---
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def setup_ticket(ctx):
     channel = bot.get_channel(TICKET_CHANNEL_ID)
     if not channel:
@@ -126,6 +123,12 @@ async def setup_ticket(ctx):
         color=discord.Color.green()
     )
     await channel.send(embed=embed, view=TicketButtonView())
+    await ctx.send("✅ Ticket system setup complete!")
 
+@setup_ticket.error
+async def setup_ticket_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ You need Administrator permissions to use this command.")
 
+# --- Run Bot ---
 bot.run(os.getenv("TOKEN"))
