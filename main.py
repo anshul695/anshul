@@ -19,15 +19,11 @@ TICKET_CATEGORY_ID = 1363040295943536700  # Replace with your ticket category ID
 STAFF_ROLE_NAME = "Staff"  # Replace with your staff role name
 
 
-class TicketModal(Modal):
-    def __init__(self):
-        super().__init__(title="Open Ticket")
-        self.team_name = TextInput(label="Team Name", required=True)
-        self.issue = TextInput(label="Issue", required=True)
-        self.add_item(self.team_name)
-        self.add_item(self.issue)
+class TicketModal(Modal, title="Open Ticket"):
+    team_name = TextInput(label="Team Name", required=True, placeholder="Enter your team name", max_length=45)
+    issue = TextInput(label="Issue", required=True, placeholder="Describe the issue", style=discord.TextStyle.paragraph, max_length=400)
 
-    async def callback(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction):
         team_name = self.team_name.value
         issue = self.issue.value
 
@@ -57,7 +53,6 @@ class TicketModal(Modal):
         await ticket_channel.send(embed=embed)
 
         await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
-
 
 class OpenTicketButton(Button):
     def __init__(self):
