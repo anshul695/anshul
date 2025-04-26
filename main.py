@@ -3,6 +3,17 @@ from discord.ext import commands
 from discord.ui import Button, View, Modal, TextInput
 import os
 from dotenv import load_dotenv
+import threading
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_webserver():
+    app.run(host='0.0.0.0', port=8080)
 
 load_dotenv()
 
@@ -161,6 +172,10 @@ async def setup_ticket(ctx):
 async def setup_ticket_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ You need Administrator permissions to use this command.")
+
+if __name__ == "__main__":
+    threading.Thread(target=run_webserver).start()
+    bot.run(os.getenv("TOKEN"))
 
 # --- Run Bot ---
 bot.run(os.getenv("TOKEN"))
